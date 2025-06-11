@@ -9,11 +9,14 @@ import java.io.File;
 import java.io.IOException;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.sound.sampled.*;
 
 public class GUI extends JFrame {
     private BufferedImage backgroundImage;
     private JTextArea inputArea, outputArea, captionArea;
     private morseMap morseMap;
+    private MorseBinaryTree morseTree; // Assuming MorseBinaryTree class exists
+    private boolean useMap = true;
     private Thread voiceThread;
 
     private boolean engToMorse = true;
@@ -34,7 +37,7 @@ public class GUI extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1200, 800);
         setLocationRelativeTo(null);
-        setUndecorated(true);
+        setUndecorated(false);
 
         try {
             backgroundImage = ImageIO.read(new File("Assets/Background.jpg"));
@@ -44,6 +47,7 @@ public class GUI extends JFrame {
         }
 
         morseMap = new morseMap();
+        morseTree = new MorseBinaryTree(); // Initialize MorseBinaryTree
         historyModel = new DefaultListModel<>();
 
         RoundedBackgroundPanel bgPanel = new RoundedBackgroundPanel(backgroundImage, 40);
@@ -83,6 +87,34 @@ public class GUI extends JFrame {
         gbc.weightx = 0;
         gbc.anchor = GridBagConstraints.NORTHEAST;
         bgPanel.add(gearButton, gbc);
+
+        // --- Switch Data Structure Button (DS Button - Styled with blue and pop-up) ---
+        JButton switchDSButton = new JButton("DS");
+        switchDSButton.setFont(new Font("Arial", Font.BOLD, 18));
+        switchDSButton.setBackground(new Color(0, 120, 215)); // Changed background to blue
+        switchDSButton.setForeground(Color.WHITE); // Keep text white for contrast
+        switchDSButton.setOpaque(true);
+        switchDSButton.setFocusPainted(false);
+        switchDSButton.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1, true));
+        switchDSButton.setPreferredSize(new Dimension(50, 50));
+        switchDSButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(20, 10, 20, 20);
+        bgPanel.add(switchDSButton, gbc);
+        gbc.insets = new Insets(20, 20, 20, 20); // Reset insets
+
+        // Add ActionListener for pop-up message
+        switchDSButton.addActionListener(e -> {
+            useMap = !useMap;
+            String method = useMap ? "Map" : "Tree";
+            JOptionPane.showMessageDialog(this, "Data structure changed to: " + method); // Added pop-up
+        });
+
 
         // Input Text Area
         inputArea = createTransparentTextArea();
@@ -182,18 +214,22 @@ public class GUI extends JFrame {
         buttonsPanel.setOpaque(false);
 
         JButton lightsBtn = createColoredButton("Flash", Color.WHITE, Color.BLACK);
-        JButton voiceBtn = createColoredButton("Voice", new Color(0, 69, 138), Color.WHITE);
-        JButton soundBtn = createColoredButton("Sound", new Color(115, 97, 238), Color.WHITE);
-        JButton historyBtn = createColoredButton("History", new Color(51, 26, 194), Color.WHITE);
-        JButton translateBtn = createColoredButton("Translate", new Color(0, 150, 136), Color.WHITE);
-        JButton clearBtn = createColoredButton("Clear", new Color(244, 67, 54), Color.WHITE);
+        JButton importBtn = createColoredButton("Import", new Color(0, 69, 138), Color.BLACK);
+        JButton soundBtn = createColoredButton("Sound", new Color(115, 97, 238), Color.BLACK);
+        JButton historyBtn = createColoredButton("History", new Color(51, 26, 194), Color.BLACK);
+        JButton translateBtn = createColoredButton("Translate", new Color(0, 150, 136), Color.BLACK);
+        JButton clearBtn = createColoredButton("Clear", new Color(244, 67, 54), Color.BLACK);
 
         buttonsPanel.add(lightsBtn);
-        buttonsPanel.add(voiceBtn);
+        buttonsPanel.add(importBtn);
         buttonsPanel.add(soundBtn);
         buttonsPanel.add(historyBtn);
         buttonsPanel.add(translateBtn);
         buttonsPanel.add(clearBtn);
+
+        historyBtn.addActionListener(e -> {
+            historyPanel.setVisible(!historyPanel.isVisible());
+        });
 
         gbc.gridx = 0;
         gbc.gridy = 2;
@@ -214,10 +250,10 @@ public class GUI extends JFrame {
         gbc.anchor = GridBagConstraints.NORTHEAST;
         bgPanel.add(spinnerPanel, gbc);
 
-        // History panel
+// 📜 History Panel Setup
         historyPanel = new JPanel(new BorderLayout());
         historyPanel.setBackground(new Color(0, 0, 0, 180));
-        historyPanel.setVisible(false);
+        historyPanel.setVisible(true); // Hidden by default
 
         historyList = new JList<>(historyModel);
         historyList.setFont(new Font("Consolas", Font.PLAIN, 14));
@@ -228,11 +264,12 @@ public class GUI extends JFrame {
         historyScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         historyPanel.add(historyScroll, BorderLayout.CENTER);
 
+// 🧱 Layout positioning (IMPORTANT: this adds to bgPanel!)
         gbc.gridx = 0;
         gbc.gridy = 4;
         gbc.gridwidth = 5;
         gbc.weightx = 1;
-        gbc.weighty = 0.4;
+        gbc.weighty = 0.3;
         gbc.fill = GridBagConstraints.BOTH;
         bgPanel.add(historyPanel, gbc);
 
@@ -248,71 +285,101 @@ public class GUI extends JFrame {
         morseGuideLabel.setVisible(false);
         bgPanel.add(morseGuideLabel);
 
-        // Settings panel
-        settingsPanel = new JPanel();
-        settingsPanel.setLayout(new BoxLayout(settingsPanel, BoxLayout.Y_AXIS));
-        settingsPanel.setBounds(1100, 50, 220, 500);
-        settingsPanel.setOpaque(false);
-        settingsPanel.setVisible(false);
+// ⚙ Settings Panel as a Popup Dialog
+        gearButton.addActionListener(e -> {
+            // Create the settings dialog
+            JDialog settingsDialog = new JDialog(this, "Settings", true);
+            settingsDialog.setSize(300, 250);
+            settingsDialog.setLocationRelativeTo(this); // Center it on the main window
+            settingsDialog.setLayout(new BoxLayout(settingsDialog.getContentPane(), BoxLayout.Y_AXIS));
+            settingsDialog.getContentPane().setBackground(new Color(30, 30, 30)); // Dark theme
 
-        JLabel settingsLabel = new JLabel("⚙ Settings");
-        settingsLabel.setForeground(Color.WHITE);
-        settingsLabel.setFont(new Font("Dialog", Font.BOLD, 20));
-        settingsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            // ⚙ Label
+            JLabel settingsLabel = new JLabel("⚙ Settings");
+            settingsLabel.setForeground(Color.WHITE);
+            settingsLabel.setFont(new Font("Dialog", Font.BOLD, 20));
+            settingsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JCheckBox dictToggle = new JCheckBox("Morse Guide");
-        dictToggle.setFont(new Font("Dialog", Font.PLAIN, 18));
-        dictToggle.setForeground(Color.WHITE);
-        dictToggle.setOpaque(false);
-        dictToggle.setAlignmentX(Component.CENTER_ALIGNMENT);
+            // 📘 Morse Guide toggle that opens image popup and closes settings
+            JButton morseGuideButton = new JButton("📘 Open Morse Guide");
+            morseGuideButton.setFont(new Font("Dialog", Font.PLAIN, 16));
+            morseGuideButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JCheckBox soundToggle = new JCheckBox("Sound");
-        soundToggle.setFont(new Font("Dialog", Font.PLAIN, 18));
-        soundToggle.setForeground(Color.WHITE);
-        soundToggle.setOpaque(false);
-        soundToggle.setAlignmentX(Component.CENTER_ALIGNMENT);
+            morseGuideButton.addActionListener(ev -> {
+                settingsDialog.dispose();
 
-        JButton aboutButton = new JButton("❓ About & Help");
-        aboutButton.setFont(new Font("Dialog", Font.BOLD, 14));
-        aboutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+                JDialog guideDialog = new JDialog(this, "Morse Guide Chart", false);
+                guideDialog.setSize(500, 400);
+                guideDialog.setLocationRelativeTo(this);
 
-        settingsPanel.add(settingsLabel);
-        settingsPanel.add(Box.createVerticalStrut(20));
-        settingsPanel.add(dictToggle);
-        settingsPanel.add(Box.createVerticalStrut(20));
-        settingsPanel.add(soundToggle);
-        settingsPanel.add(Box.createVerticalStrut(20));
-        settingsPanel.add(aboutButton);
-        bgPanel.add(settingsPanel);
+                try {
+                    BufferedImage morseImage = ImageIO.read(new File("Assets/Morse.jpg"));
+                    Image scaled = morseImage.getScaledInstance(480, 360, Image.SCALE_SMOOTH);
+                    JLabel imageLabel = new JLabel(new ImageIcon(scaled));
+                    guideDialog.add(imageLabel);
+                    guideDialog.setVisible(true);
+                } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(this, "Could not load Morse Guide image.");
+                }
+            });
+
+            // ❓ About & Help button
+            JButton aboutButton = new JButton("❓ About & Help");
+            aboutButton.setFont(new Font("Dialog", Font.BOLD, 14));
+            aboutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            aboutButton.addActionListener(ev -> showAboutWindow());
+
+            // Add components to the dialog
+            settingsDialog.add(Box.createVerticalStrut(20));
+            settingsDialog.add(settingsLabel);
+            settingsDialog.add(Box.createVerticalStrut(15));
+            settingsDialog.add(morseGuideButton);
+            settingsDialog.add(Box.createVerticalStrut(20));
+            settingsDialog.add(aboutButton);
+            settingsDialog.add(Box.createVerticalGlue());
+
+            // Show the dialog
+            settingsDialog.setVisible(true);
+        });
 
         // Event listeners
+
+        // --- Swap button action listener ---
         swapButton.addActionListener(e -> {
             engToMorse = !engToMorse;
             String inputText = inputArea.getText().trim();
             String outputText = outputArea.getText().trim();
 
             inputArea.setText(outputText);
-            outputArea.setText(engToMorse ? morseMap.to_Morse(outputText) : morseMap.from_Morse(outputText));
+            outputArea.setText(engToMorse ? morseMap.toMorse(outputText) : morseMap.fromMorse(outputText));
 
             toggleCaptions.setVisible(engToMorse);
             captionScroll.setVisible(engToMorse && toggleCaptions.isSelected());
         });
 
+        // --- Translate button action listener (Uses useMap for DS selection) ---
         translateBtn.addActionListener(e -> {
-            String inputText = inputArea.getText().trim();
-            if (inputText.isEmpty()) {
+            String input = inputArea.getText().trim();
+            if (input.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please enter text to translate.");
                 return;
             }
 
-            String translated = engToMorse ? morseMap.to_Morse(inputText) : morseMap.from_Morse(inputText);
-            outputArea.setText(translated);
+            String result;
+            if (engToMorse) {
+                result = useMap ? morseMap.toMorse(input) : morseTree.toMorse(input);
+            } else {
+                result = useMap ? morseMap.fromMorse(input) : morseTree.fromMorse(input);
+            }
+            outputArea.setText(result);
 
             if (engToMorse) {
-                captionArea.setText(inputText.replace(" ", " / "));
+                captionArea.setText(input.replace(" ", " / "));
+            } else {
+                captionArea.setText("");
             }
 
-            addToHistory(inputText, translated);
+            addToHistory(input, result);
         });
 
         clearBtn.addActionListener(e -> {
@@ -339,30 +406,49 @@ public class GUI extends JFrame {
             }
         });
 
+        importBtn.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            int result = fileChooser.showOpenDialog(this);
+
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                try {
+                    String content = new String(java.nio.file.Files.readAllBytes(selectedFile.toPath())).trim();
+                    inputArea.setText(content);
+
+                    String translated = engToMorse
+                            ? (useMap ? morseMap.toMorse(content) : morseTree.toMorse(content))
+                            : (useMap ? morseMap.fromMorse(content) : morseTree.fromMorse(content));
+
+                    outputArea.setText(translated);
+
+                    if (engToMorse) {
+                        captionArea.setText(content.replace(" ", " / "));
+                    }
+
+                    addToHistory(content, translated);
+
+                } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(this, "Failed to read file.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
 
         soundBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Sound feature coming soon!");
+            String morseText = engToMorse ? outputArea.getText() : inputArea.getText();
+            if (morseText.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No Morse code to play.");
+                return;
+            }
+
+            int dotDuration = (int) dotSpinner.getValue();
+
+            new Thread(() -> playMorseSound(morseText, dotDuration)).start();
         });
 
-        historyBtn.addActionListener(e -> {
-            historyPanel.setVisible(!historyPanel.isVisible());
-        });
 
-        toggleCaptions.addActionListener(e -> {
-            captionScroll.setVisible(toggleCaptions.isSelected());
-        });
 
-        dictToggle.addActionListener(e -> {
-            morseGuideLabel.setVisible(dictToggle.isSelected());
-        });
-
-        gearButton.addActionListener(e -> {
-            settingsPanel.setVisible(!settingsPanel.isVisible());
-        });
-
-        aboutButton.addActionListener(e -> showAboutWindow());
-
-        // Real-time translation
+        // Real-time translation (Uses useMap for DS selection)
 //        inputArea.addKeyListener(new KeyAdapter() {
 //            @Override
 //            public void keyReleased(KeyEvent e) {
@@ -370,7 +456,7 @@ public class GUI extends JFrame {
 //
 //                if (engToMorse) {
 //                    if (!inputText.isEmpty()) {
-//                        String morseText = morseMap.to_Morse(inputText);
+//                        String morseText = useMap ? morseMap.toMorse(inputText) : morseTree.toMorse(inputText);
 //                        outputArea.setText(morseText);
 //                        captionArea.setText(inputText.replace(" ", " / "));
 //                    } else {
@@ -379,7 +465,7 @@ public class GUI extends JFrame {
 //                    }
 //                } else {
 //                    if (!inputText.isEmpty()) {
-//                        String englishText = morseMap.from_Morse(inputText);
+//                        String englishText = useMap ? morseMap.fromMorse(inputText) : morseTree.fromMorse(inputText);
 //                        outputArea.setText(englishText);
 //                    } else {
 //                        outputArea.setText("");
@@ -391,7 +477,7 @@ public class GUI extends JFrame {
         // Make frame rounded
         addComponentListener(new ComponentAdapter() {
             public void componentResized(ComponentEvent e) {
-                setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 40, 40));
+                setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 0, 0));
             }
         });
     }
@@ -427,6 +513,7 @@ public class GUI extends JFrame {
                 e.printStackTrace();
             }
         }
+        
 
         SwingUtilities.invokeLater(() -> {
             flashLight.setBackground(Color.DARK_GRAY);
@@ -538,25 +625,61 @@ public class GUI extends JFrame {
             if (image != null) {
                 g2.drawImage(image, 0, 0, getWidth(), getHeight(), this);
             } else {
-                g2.setColor(Color.DARK_GRAY);
-                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.setColor(getBackground());
+                g2.fill(clip);
             }
 
             g2.dispose();
             super.paintComponent(g);
         }
     }
+    private void playBeep(int duration) {
+        float frequency = 800f; // Hz
+        int sampleRate = 44100;
+        byte[] buf = new byte[duration * sampleRate / 1000];
+
+        for (int i = 0; i < buf.length; i++) {
+            double angle = 2.0 * Math.PI * i / (sampleRate / frequency);
+            buf[i] = (byte) (Math.sin(angle) * 127);
+        }
+
+        try {
+            AudioFormat af = new AudioFormat(sampleRate, 8, 1, true, false);
+            SourceDataLine sdl = AudioSystem.getSourceDataLine(af);
+            sdl.open(af);
+            sdl.start();
+            sdl.write(buf, 0, buf.length);
+            sdl.drain();
+            sdl.stop();
+            sdl.close();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Audio playback error.");
+        }
+    }
+
+    private void playMorseSound(String morseCode, int dotDuration) {
+        int dashDuration = dotDuration * 3;
+        int spaceDuration = dotDuration * 2;
+
+        for (char c : morseCode.toCharArray()) {
+            if (c == '.') {
+                playBeep(dotDuration);
+            } else if (c == '-') {
+                playBeep(dashDuration);
+            } else if (c == ' ') {
+                try { Thread.sleep(spaceDuration); } catch (InterruptedException ignored) {}
+            } else if (c == '/') {
+                try { Thread.sleep(dotDuration * 7); } catch (InterruptedException ignored) {}
+            }
+
+            try { Thread.sleep(dotDuration); } catch (InterruptedException ignored) {}
+        }
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            GUI app = new GUI();
-            app.setVisible(true);
+            GUI gui = new GUI();
+            gui.setVisible(true);
         });
     }
 }
