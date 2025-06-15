@@ -1,6 +1,6 @@
 import java.util.HashMap;
 
-public class morseMap implements MorseTranslator{
+public class morseMap implements MorseTranslator {
     private HashMap<Character, String> morse_map;
     private HashMap<String, Character> reverse;
     public int operations;
@@ -74,30 +74,21 @@ public class morseMap implements MorseTranslator{
             reverse.put(morse_map.get(key), key);
         }
     }
-    public String toMorse(String input) {
-        long startTime = System.nanoTime();
 
-        int localOps = 0;
+    @Override
+    public String toMorse(String input) {
+        operations = 0;
         StringBuilder sb = new StringBuilder();
         for (char c : input.toUpperCase().toCharArray()) {
             sb.append(morse_map.getOrDefault(c, "?")).append(" ");
-            localOps++;
+            operations++;
         }
-
-        long endTime = System.nanoTime();
-        double runtimeSec = (endTime - startTime) / 1_000_000_000.0;
-
-        System.out.println("Operations (English -> Morse): " + localOps);
-        System.out.printf("Runtime (English -> Morse): %.6f s%n", runtimeSec);
-
-        operations += localOps;
         return sb.toString().trim();
     }
 
+    @Override
     public String fromMorse(String translateToEnglish) {
-        long startTime = System.nanoTime();
-
-        int localOps = 0;
+        operations = 0;
         StringBuilder text = new StringBuilder();
         String[] words = translateToEnglish.trim().split(" / ");
 
@@ -105,22 +96,20 @@ public class morseMap implements MorseTranslator{
             String[] letters = word.trim().split(" ");
             for (String letter : letters) {
                 text.append(reverse.getOrDefault(letter, '?'));
-                localOps++;
+                operations++;
             }
             text.append(" ");
         }
-
-        long endTime = System.nanoTime();
-        double runtimeSec = (endTime - startTime) / 1_000_000_000.0;
-
-        System.out.println("Operations (Morse -> English): " + localOps);
-        System.out.printf("Runtime (Morse -> English): %.6f s%n", runtimeSec);
-
-        operations += localOps;
         return text.toString().trim();
     }
+
     @Override
     public int getOperations() {
         return operations;
+    }
+
+    @Override
+    public long getSpaceUsage() {
+        return morse_map.size() + reverse.size();
     }
 }
