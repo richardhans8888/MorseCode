@@ -7,26 +7,6 @@ public class MorseBinaryTree implements MorseTranslator {
         buildTree();
     }
 
-    private void insert(String code, char letter) {
-        MorseTreeNode current = root;
-        for (char c : code.toCharArray()) {
-            operations++; // Count each traversal step as operation
-            if (c == '.') {
-                if (current.dot == null) {
-                    current.dot = new MorseTreeNode('\0');
-                }
-                current = current.dot;
-            } else if (c == '-') {
-                if (current.dash == null) {
-                    current.dash = new MorseTreeNode('\0');
-                }
-                current = current.dash;
-            }
-        }
-        current.value = letter;
-        // System.out.println("Added letter: " + letter + " | operations done: " + operations);
-    }
-
     private void buildTree() {
         insert(".-", 'A');
         insert("-...", 'B');
@@ -54,7 +34,6 @@ public class MorseBinaryTree implements MorseTranslator {
         insert("-..-", 'X');
         insert("-.--", 'Y');
         insert("--..", 'Z');
-
         insert("-----", '0');
         insert(".----", '1');
         insert("..---", '2');
@@ -65,7 +44,6 @@ public class MorseBinaryTree implements MorseTranslator {
         insert("--...", '7');
         insert("---..", '8');
         insert("----.", '9');
-
         insert(".-.-.-", '.');
         insert("--..--", ',');
         insert("..--..", '?');
@@ -78,7 +56,39 @@ public class MorseBinaryTree implements MorseTranslator {
         insert("..--.-", '_');
         insert("/", ' ');
 
-        operations = 0; // reset the tree
+        operations = 0; // reset after building
+    }
+    private void insert(String code, char letter) {
+        MorseTreeNode current = root;
+        for (char c : code.toCharArray()) {
+            operations++; // Count each traversal step as operation
+            if (c == '.') {
+                if (current.dot == null) {
+                    current.dot = new MorseTreeNode('\0');
+                }
+                current = current.dot;
+            } else if (c == '-') {
+                if (current.dash == null) {
+                    current.dash = new MorseTreeNode('\0');
+                }
+                current = current.dash;
+            }
+        }
+        current.value = letter;
+    }
+
+    private char decode(String code) {
+        MorseTreeNode current = root;
+        for (char c : code.toCharArray()) {
+            operations++; // Count each step down the tree
+            if (c == '.') {
+                current = current.dot;
+            } else if (c == '-') {
+                current = current.dash;
+            }
+            if (current == null) return '?';
+        }
+        return current.value != '\0' ? current.value : '?';
     }
 
     @Override
@@ -86,14 +96,8 @@ public class MorseBinaryTree implements MorseTranslator {
         operations = 0;
         StringBuilder sb = new StringBuilder();
         for (char ch : input.toUpperCase().toCharArray()) {
-            long start = System.nanoTime();
-
             String code = findMorseCode(root, ch, "");
             sb.append(code != null ? code : "?").append(" ");
-
-            long end = System.nanoTime();
-            long duration = end - start;
-            System.out.println("Encoded letter: " + ch + " | operations done: " + operations + " | time: " + duration + " ns");
         }
         return sb.toString().trim();
     }
@@ -118,36 +122,28 @@ public class MorseBinaryTree implements MorseTranslator {
         for (String word : words) {
             String[] letters = word.split(" ");
             for (String code : letters) {
-                long start = System.nanoTime();
-
                 char decodedChar = decode(code);
                 sb.append(decodedChar);
-
-                long end = System.nanoTime();
-                long duration = end - start;
-                System.out.println("Decoded code: " + code + " | letter: " + decodedChar + " | operations done: " + operations + " | time: " + duration + " ns");
             }
             sb.append(" ");
         }
         return sb.toString().trim();
     }
 
-    private char decode(String code) {
-        MorseTreeNode current = root;
-        for (char c : code.toCharArray()) {
-            operations++; // Count each step down the tree
-            if (c == '.') {
-                current = current.dot;
-            } else if (c == '-') {
-                current = current.dash;
-            }
-            if (current == null) return '?';
-        }
-        return current.value != '\0' ? current.value : '?';
-    }
-
     @Override
     public int getOperations() {
         return operations;
+    }
+    @Override
+    public long getSpaceUsage() {
+        return countNodes(root);
+    }
+
+    private long countNodes(MorseTreeNode node) {
+        if (node == null) {
+            return 0;
+        }
+        // A node exists, so count it and its children.
+        return 1 + countNodes(node.dot) + countNodes(node.dash);
     }
 }
