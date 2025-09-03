@@ -1,6 +1,6 @@
 Morse Code Translator
 
-Ever wondered how secret agents, sailors, and oldschool radio operators sent messages before WhatsApp existed? 📡 This project brings that vintage communication style into the 21st century. Our Morse Code Translator is a Javabased application that converts normal text into dots and dashes — and then flips it back into readable text. It’s like teaching your computer to speak in beeps and blinks, pretty cool for something invented in the 1830s.
+Ever wondered how secret agents, sailors, and oldschool radio operators sent messages before WhatsApp existed? 📡 This project brings that vintage communication style into the 21st century. Our Morse Code Translator is a Javabased application that converts normal text into dots and dashes  and then flips it back into readable text. It’s like teaching your computer to speak in beeps and blinks, pretty cool for something invented in the 1830s.
 
 This translator isn’t just a boring encoder/decoder. We added extra flair to make it interactive and fun. You can see translations in realtime, play the actual beeping sounds of Morse code, and even flash visual signals onscreen like a lighthouse sending out secret codes. Whether you’re trying to prank your friends, learn Morse as a survival skill, or just flex your programming chops, this project makes it easy (and surprisingly addictive).
 
