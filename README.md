@@ -14,3 +14,30 @@ Built as our finalyear OOP & Data Structures project, this app is more than just
 	•	💡 Visual Signals: Onscreen flashing to simulate real Morse signals.
 	•	🗂 File Support: Import text files for batch conversion and save translations.
 	•	🎨 UserFriendly Interface: Simple design that makes learning and experimenting fun
+ 
+## How to Run
+1. **Install Java**:
+   - Make sure you have Java JDK 8 or higher installed on your system.
+   - Download it from [Oracle JDK](https://www.oracle.com/java/technologies/javase-downloads.html) or use [OpenJDK](https://openjdk.org/).
+
+2. **Clone the Repository**:
+   - Open your terminal and run:
+     ```
+     git clone https://github.com/<your-username>/MorseCode.git
+     cd MorseCode/src
+     ```
+
+3. **Compile the Program**:
+   - In the `src` directory, compile the Java file:
+     ```
+     javac MorseTranslator.java
+     ```
+
+4. **Run the Translator**:
+   - Start the program with:
+     ```
+     java MorseTranslator
+     ```
+
+5. **Enjoy**:
+   - Type a message and watch it translate into Morse code with sound and visuals!
